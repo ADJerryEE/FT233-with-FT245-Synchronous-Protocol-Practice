@@ -1,0 +1,101 @@
+####################################################################################
+# File Name:     usbfifo_top.xdc
+# Target Device: AMD Xilinx Artix-7 (xc7a35t)
+# Top Module:    usbfifo_top
+# Description:   FT233HP Synchronous 245 FIFO Timing Constraints (Table 17)
+#                Includes 0.5 ns max PCB trace delay budget
+####################################################################################
+
+# ==================================================================================
+# 1. System Clock Definition (FT233HP 60 MHz CLKOUT)
+#    Datasheet Table 17: t1 = 16.67 ns (60 MHz), t2/t3 = 8.33 ns
+# ==================================================================================
+create_clock -period 16.670 -name clk_60mhz -waveform {0.000 8.335} [get_ports i_clk_60mhz]
+
+
+# ==================================================================================
+# 2. Input Delay Constraints (FT233HP -> FPGA)
+#    Assumes T_pcb_max = 0.5 ns, T_pcb_min = 0.0 ns
+#    Max Input Delay = T_co_max + 0.5 ns
+#    Min Input Delay = T_co_min - 0.5 ns
+# ==================================================================================
+
+# RXF# Input Delay (Table 17 t4: Min = 1.4 ns, Max = 9.0 ns)
+# Max = 9.0 + 0.5 = 9.500 ns | Min = 1.4 - 0.5 = 0.900 ns
+set_input_delay -clock [get_clocks clk_60mhz] -max 9.500 [get_ports i_rxf_l]
+set_input_delay -clock [get_clocks clk_60mhz] -min 0.900 [get_ports i_rxf_l]
+
+# TXE# Input Delay (Table 17 t11: Min = 1.0 ns, Max = 9.0 ns)
+# Max = 9.0 + 0.5 = 9.500 ns | Min = 1.0 - 0.5 = 0.500 ns
+set_input_delay -clock [get_clocks clk_60mhz] -max 9.500 [get_ports i_txe_l]
+set_input_delay -clock [get_clocks clk_60mhz] -min 0.500 [get_ports i_txe_l]
+
+# Read DATA[7:0] Input Delay (Table 17 t5: Min = 2.4 ns, Max = 9.0 ns)
+# Max = 9.0 + 0.5 = 9.500 ns | Min = 2.4 - 0.5 = 1.900 ns
+set_input_delay -clock [get_clocks clk_60mhz] -max 9.500 [get_ports {io_data[*]}]
+set_input_delay -clock [get_clocks clk_60mhz] -min 1.900 [get_ports {io_data[*]}]
+
+
+# ==================================================================================
+# 3. Output Delay Constraints (FPGA -> FT233HP)
+#    Assumes 0.5 ns PCB delay budget added to FT233HP Setup requirement:
+#    Max Output Delay = T_su + 0.5 ns (Note: use +1.0 ns if accounting for 0.5 ns 
+#                       CLKOUT trace + 0.5 ns DATA/CTRL return trace round-trip)
+#    Min Output Delay = -T_h = 0.000 ns
+# ==================================================================================
+
+# OE# Output Delay (Table 17 t7 Setup = 8.0 ns, t8 Hold = 0.0 ns)
+# Max = 8.0 + 0.5 = 8.500 ns | Min = 0.000 ns
+set_output_delay -clock [get_clocks clk_60mhz] -max 8.500 [get_ports o_oe_l]
+set_output_delay -clock [get_clocks clk_60mhz] -min 0.000 [get_ports o_oe_l]
+
+# RD# Output Delay (Table 17 t9 Setup = 7.5 ns, t10 Hold = 0.0 ns)
+# Max = 7.5 + 0.5 = 8.000 ns | Min = 0.000 ns
+set_output_delay -clock [get_clocks clk_60mhz] -max 8.000 [get_ports o_rd_l]
+set_output_delay -clock [get_clocks clk_60mhz] -min 0.000 [get_ports o_rd_l]
+
+# WR# Output Delay (Table 17 t14 Setup = 8.0 ns, t15 Hold = 0.0 ns)
+# Max = 8.0 + 0.5 = 8.500 ns | Min = 0.000 ns
+set_output_delay -clock [get_clocks clk_60mhz] -max 8.500 [get_ports o_wr_l]
+set_output_delay -clock [get_clocks clk_60mhz] -min 0.000 [get_ports o_wr_l]
+
+# Write DATA[7:0] Output Delay (Table 17 t12 Setup = 8.0 ns, t13 Hold = 0.0 ns)
+# Max = 8.0 + 0.5 = 8.500 ns | Min = 0.000 ns
+set_output_delay -clock [get_clocks clk_60mhz] -max 8.500 [get_ports {io_data[*]}]
+set_output_delay -clock [get_clocks clk_60mhz] -min 0.000 [get_ports {io_data[*]}]
+
+
+# ==================================================================================
+# 4. Timing Exceptions
+#    Asynchronous active-low system reset (i_rst_n)
+# ==================================================================================
+set_false_path -from [get_ports i_rst_n]
+
+
+# ==================================================================================
+# 5. I/O Electrical Standards & Slew Rate Optimization
+#    3.3V CMOS I/O Bank with FAST slew rate to minimize output buffer delay (T_cko)
+# ==================================================================================
+set_property IOSTANDARD LVCMOS33 [get_ports {i_clk_60mhz i_rst_n i_rxf_l i_txe_l o_oe_l o_rd_l o_wr_l}]
+set_property IOSTANDARD LVCMOS33 [get_ports {io_data[*]}]
+set_property SLEW FAST [get_ports {o_oe_l o_rd_l o_wr_l io_data[*]}]
+
+
+# ==================================================================================
+# 6. Physical Pin Assignments (Uncomment and replace with your board schematic pins)
+# ==================================================================================
+# set_property PACKAGE_PIN <PIN_CLK>  [get_ports i_clk_60mhz]
+# set_property PACKAGE_PIN <PIN_RST>  [get_ports i_rst_n]
+# set_property PACKAGE_PIN <PIN_RXF>  [get_ports i_rxf_l]
+# set_property PACKAGE_PIN <PIN_TXE>  [get_ports i_txe_l]
+# set_property PACKAGE_PIN <PIN_OE>   [get_ports o_oe_l]
+# set_property PACKAGE_PIN <PIN_RD>   [get_ports o_rd_l]
+# set_property PACKAGE_PIN <PIN_WR>   [get_ports o_wr_l]
+# set_property PACKAGE_PIN <PIN_D0>   [get_ports {io_data[0]}]
+# set_property PACKAGE_PIN <PIN_D1>   [get_ports {io_data[1]}]
+# set_property PACKAGE_PIN <PIN_D2>   [get_ports {io_data[2]}]
+# set_property PACKAGE_PIN <PIN_D3>   [get_ports {io_data[3]}]
+# set_property PACKAGE_PIN <PIN_D4>   [get_ports {io_data[4]}]
+# set_property PACKAGE_PIN <PIN_D5>   [get_ports {io_data[5]}]
+# set_property PACKAGE_PIN <PIN_D6>   [get_ports {io_data[6]}]
+# set_property PACKAGE_PIN <PIN_D7>   [get_ports {io_data[7]}]
